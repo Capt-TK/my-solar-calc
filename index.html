@@ -3,9 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Solar Cell Assessment Tool</title>
+    <title>Solar Cell Assessment Tool - ACN Solution Engineering</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap" rel="stylesheet">
+    <!-- ไลบรารีสำหรับการ Generate PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
         body { font-family: 'Kanit', sans-serif; background-color: #f0f4f8; }
         .card { transition: all 0.2s ease; cursor: pointer; }
@@ -18,34 +21,72 @@
         }
 
         .hidden { display: none; }
+        
+        svg { display: block; }
 
-        @media print {
-            body { background-color: white; padding: 0; }
-            .no-print { display: none !important; }
-            #step-result { display: block !important; box-shadow: none !important; border: none !important; }
-            .bg-slate-50, .bg-blue-50, .bg-amber-50 { background-color: white !important; border: 1px solid #eee !important; }
-            .max-w-4xl { max-width: 100% !important; width: 100% !important; margin: 0 !important; }
-            header { margin-bottom: 20px !important; }
-            .rounded-2xl, .rounded-xl { border-radius: 0 !important; }
+        .btn-hover { transition: transform 0.2s; }
+        .btn-hover:hover { transform: scale(1.02); }
+
+        .form-input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.75rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .form-input:focus {
+            border-color: #2563eb;
+            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
         }
     </style>
 </head>
-<body class="p-4 md:p-8">
+<body class="p-4 md:p-8 text-slate-800">
     <div class="max-w-4xl mx-auto">
         <!-- Header -->
-        <header class="text-center mb-10">
-            <h1 class="text-3xl md:text-4xl font-bold text-slate-800 mb-2">ออกแบบระบบโซลาร์เซลล์ของคุณ</h1>
-            <p class="text-slate-600 no-print">วิเคราะห์ขนาด พื้นที่ และเทคโนโลยีที่เหมาะสมใน 1 นาที</p>
+        <header class="text-center mb-10 no-print">
+            <h1 class="text-3xl md:text-4xl font-bold text-slate-800 mb-2">ACN Solution Engineering</h1>
+            <p class="text-slate-600">โปรเจกต์: ระบบโซล่าเซลล์ (Solar Assessment System)</p>
         </header>
 
         <!-- Progress Bar -->
         <div class="w-full bg-gray-200 rounded-full h-2.5 mb-8 no-print text-[0]">
-            <div id="progress" class="bg-blue-600 h-2.5 rounded-full transition-all duration-500" style="width: 25%"></div>
+            <div id="progress" class="bg-blue-600 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
         </div>
 
         <div id="survey-container">
+            <!-- Step 0: Customer Information -->
+            <section id="step-0" class="step">
+                <div class="bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
+                    <h2 class="text-xl font-semibold mb-6 text-slate-700 text-center">กรุณากรอกข้อมูลลูกค้าเบื้องต้น</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="space-y-2">
+                            <label class="text-sm font-medium text-slate-600">นามลูกค้า / ชื่อบริษัท</label>
+                            <input type="text" id="cust-name" class="form-input" placeholder="ระบุชื่อ-นามสกุล">
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-sm font-medium text-slate-600">เบอร์โทรศัพท์</label>
+                            <input type="tel" id="cust-phone" class="form-input" placeholder="08x-xxxxxxx">
+                        </div>
+                        <div class="space-y-2 md:col-span-2">
+                            <label class="text-sm font-medium text-slate-600">อีเมล (ถ้ามี)</label>
+                            <input type="email" id="cust-email" class="form-input" placeholder="example@email.com">
+                        </div>
+                        <div class="space-y-2 md:col-span-2">
+                            <label class="text-sm font-medium text-slate-600">ที่อยู่สำหรับการติดตั้ง</label>
+                            <textarea id="cust-address" class="form-input h-24" placeholder="ระบุบ้านเลขที่ ซอย ถนน แขวง/ตำบล..."></textarea>
+                        </div>
+                    </div>
+                    <div class="mt-8">
+                        <button onclick="startSurvey()" class="btn-hover w-full bg-blue-600 text-white py-4 rounded-xl font-bold shadow-lg shadow-blue-200">
+                            เริ่มทำการประเมินระบบ
+                        </button>
+                    </div>
+                </div>
+            </section>
+
             <!-- Step 1: Electricity Bill -->
-            <section id="step-1" class="step">
+            <section id="step-1" class="step hidden">
                 <h2 class="text-xl font-semibold mb-6 text-slate-700 text-center">1. ค่าไฟฟ้าเฉลี่ยต่อเดือนของคุณเป็นอย่างไร?</h2>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 group-selection">
                     <button onclick="selectOption(this, () => setBill(3000, 1))" class="card p-6 bg-white rounded-xl border-2 border-transparent text-left shadow-sm">
@@ -106,25 +147,38 @@
 
             <!-- Step 4: Final Results -->
             <section id="step-result" class="step hidden">
-                <div class="bg-white rounded-2xl p-6 md:p-8 shadow-xl">
-                    <div class="text-center mb-8">
-                        <span class="bg-green-100 text-green-700 px-4 py-1 rounded-full text-sm font-bold no-print">วิเคราะห์สำเร็จ</span>
-                        <h2 class="text-3xl font-bold mt-4">ระบบที่เหมาะสมที่สุดสำหรับคุณ</h2>
-                        <p id="current-date" class="text-sm text-gray-500 mt-2 hidden print:block"></p>
+                <div id="pdf-area" class="bg-white rounded-2xl p-6 md:p-8 shadow-xl border border-gray-100 overflow-hidden relative">
+                    <!-- Header ของเอกสาร -->
+                    <div class="flex justify-between items-start border-b-2 border-slate-100 pb-6 mb-8">
+                        <div>
+                            <h2 class="text-2xl font-bold text-blue-800">ACN Solution Engineering</h2>
+                            <p class="text-slate-500 font-medium">โครงการ: ระบบโซล่าเซลล์</p>
+                        </div>
+                        <div class="text-right text-sm text-gray-400">
+                            <p id="current-date"></p>
+                        </div>
                     </div>
 
-                    <div id="result-visual" class="flex flex-col items-center mb-8 p-6 rounded-xl bg-blue-50 border border-blue-100">
+                    <!-- ข้อมูลลูกค้าในเอกสาร -->
+                    <div class="mb-8 p-4 bg-slate-50 rounded-xl grid grid-cols-1 md:grid-cols-2 gap-y-2 gap-x-8 text-sm border border-slate-100">
+                        <div><span class="text-gray-500">นามลูกค้า:</span> <span id="disp-name" class="font-semibold">-</span></div>
+                        <div><span class="text-gray-500">เบอร์โทรศัพท์:</span> <span id="disp-phone" class="font-semibold">-</span></div>
+                        <div><span class="text-gray-500">อีเมล:</span> <span id="disp-email" class="font-semibold">-</span></div>
+                        <div><span class="text-gray-500">ที่อยู่:</span> <span id="disp-address" class="font-semibold">-</span></div>
+                    </div>
+
+                    <div id="result-visual" class="flex flex-col items-center mb-8 p-6 rounded-xl bg-yellow-50 border border-yellow-100">
                         <div id="visual-icon" class="mb-4">
-                            <!-- SVG Illustration will be injected here -->
+                            <!-- SVG จะถูกใส่ที่นี่ -->
                         </div>
                         <div id="result-type" class="text-center">
-                            <!-- Technology Recommendation text -->
+                            <!-- หัวข้อแนะนำจะถูกใส่ที่นี่ -->
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10 text-slate-800">
                         <div class="space-y-4">
-                            <h3 class="font-bold border-b pb-2 text-slate-800">สเปคระบบที่แนะนำ</h3>
+                            <h3 class="font-bold border-b pb-2 text-lg">สเปคระบบที่แนะนำ</h3>
                             <div class="flex justify-between border-b border-dashed pb-2">
                                 <span class="text-gray-600">กำลังไฟรวม:</span>
                                 <span id="res-kwp" class="font-bold text-blue-600">-</span>
@@ -139,48 +193,62 @@
                             </div>
                         </div>
                         <div class="space-y-4">
-                            <h3 class="font-bold border-b pb-2 text-slate-800">จุดเด่นที่ได้รับ</h3>
+                            <h3 class="font-bold border-b pb-2 text-lg">จุดเด่นที่ได้รับ</h3>
                             <ul id="res-benefits" class="text-sm space-y-2 text-gray-700">
-                                <!-- Benefits go here -->
+                                <!-- สิทธิประโยชน์จะถูกใส่ที่นี่ -->
                             </ul>
                         </div>
                     </div>
 
-                    <!-- Action Buttons -->
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-10 no-print">
-                        <button onclick="window.print()" class="flex items-center justify-center gap-2 bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 transition shadow-lg shadow-blue-200">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                            </svg>
-                            พิมพ์ หรือ บันทึกเป็น PDF
-                        </button>
-                        <button onclick="location.reload()" class="w-full bg-slate-100 text-slate-600 py-3 rounded-xl font-bold border border-slate-200 hover:bg-slate-200 transition text-center">
-                            ทำแบบสำรวจใหม่
-                        </button>
-                    </div>
-
-                    <!-- Contact Section -->
-                    <div class="mt-10 pt-8 border-t border-gray-100 no-print">
-                        <div class="bg-slate-50 rounded-2xl p-6 text-center border border-slate-100">
-                            <h3 class="text-lg font-bold text-slate-800 mb-2">ปรึกษาผู้เชี่ยวชาญเพื่อรับใบเสนอราคาจริง</h3>
-                            <p class="text-slate-600 text-sm mb-6">หากต้องการให้เจ้าหน้าที่สำรวจหน้างาน หรือสอบถามรายละเอียดเพิ่มเติม ติดต่อได้เลยครับ</p>
+                    <!-- ส่วนปรึกษาผู้เชี่ยวชาญ -->
+                    <div class="bg-sky-400 rounded-3xl p-8 text-white relative overflow-hidden shadow-lg">
+                        <div class="relative z-10 flex flex-col items-center text-center">
+                            <div class="bg-white/20 p-3 rounded-full mb-4">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" />
+                                </svg>
+                            </div>
+                            <h3 class="text-2xl font-bold mb-2">ปรึกษาผู้เชี่ยวชาญเพื่อรับคำแนะนำฟรี</h3>
+                            <p class="text-sky-50 text-sm mb-8 max-w-md">ให้เราช่วยวิเคราะห์หน้างานจริงและออกแบบระบบที่คุ้มค่าที่สุดสำหรับคุณ พร้อมรับใบเสนอราคาภายใน 24 ชม.</p>
                             
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-center">
-                                <a href="tel:021234567" class="flex items-center justify-center gap-2 bg-slate-800 text-white py-3 px-6 rounded-xl font-bold hover:bg-slate-900 transition">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                                    </svg>
-                                    โทร: 02-123-4567
-                                </a>
-                                <a href="https://line.me/ti/p/edv0WbTmfc" target="_blank" class="flex items-center justify-center gap-2 bg-[#00B900] text-white py-3 px-6 rounded-xl font-bold hover:opacity-90 transition">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-                                        <path d="M24 10.304c0-4.577-4.705-8.304-10.5-8.304-5.795 0-10.5 3.727-10.5 8.304 0 4.1 3.731 7.531 8.776 8.192.342.074.805.226.921.517.105.263.069.676.034 0.943l-.151 0.908c-.046.275-.224 1.076 1.05 0.587 1.274-.488 6.878-4.049 9.37-6.931 1.701-1.896 1.999-3.41 1.999-5.216z" />
-                                    </svg>
-                                    แชทผ่าน LINE
+                            <!-- ปุ่มติดต่อสื่อสาร -->
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-lg no-print">
+                                <div class="bg-white text-sky-700 py-4 px-6 rounded-2xl font-bold flex items-center justify-center shadow-md">
+                                    <div class="flex items-center gap-2">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                                        </svg>
+                                        <span>โทร 083-7504321</span>
+                                    </div>
+                                </div>
+                                <a href="https://line.me/ti/p/edv0WbTmfc" target="_blank" class="btn-hover bg-[#00B900] text-white py-4 px-6 rounded-2xl font-bold flex items-center justify-center shadow-md">
+                                    <div class="flex items-center gap-2">
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                            <path d="M24 10.304c0-5.369-5.383-9.738-12-9.738-6.616 0-12 4.369-12 9.738 0 4.814 4.269 8.846 10.036 9.608.391.084.922.258 1.057.592.121.303.079.778.039 1.085l-.171 1.027c-.052.303-.251 1.184 1.081.646 1.331-.537 7.183-4.233 9.804-7.25 1.767-1.921 2.154-3.66 2.154-5.708z"/>
+                                        </svg>
+                                        <span>ปรึกษาทาง LINE</span>
+                                    </div>
                                 </a>
                             </div>
                         </div>
+                        <div class="absolute -bottom-10 -left-10 w-40 h-40 bg-white/10 rounded-full"></div>
+                        <div class="absolute -top-10 -right-10 w-32 h-32 bg-white/10 rounded-full"></div>
                     </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4 no-print">
+                    <button id="download-btn" onclick="generatePDF()" class="btn-hover bg-slate-800 text-white py-4 rounded-xl font-bold hover:bg-slate-900 transition shadow-lg shadow-slate-200 flex items-center justify-center">
+                        <div class="flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                            <span id="btn-text">ดาวน์โหลดไฟล์ PDF</span>
+                        </div>
+                    </button>
+                    <button onclick="location.reload()" class="btn-hover w-full bg-orange-100 text-orange-700 py-4 rounded-xl font-bold border border-orange-200 hover:bg-orange-200 transition text-center shadow-sm">
+                        ทำแบบสำรวจใหม่อีกครั้ง
+                    </button>
                 </div>
             </section>
         </div>
@@ -188,6 +256,7 @@
 
     <script>
         let userData = {
+            customer: { name: '', phone: '', email: '', address: '' },
             bill: 0,
             billLevel: 0,
             hasShade: false,
@@ -195,6 +264,20 @@
             priority: '',
             score: 0
         };
+
+        function startSurvey() {
+            userData.customer.name = document.getElementById('cust-name').value;
+            userData.customer.phone = document.getElementById('cust-phone').value;
+            userData.customer.email = document.getElementById('cust-email').value;
+            userData.customer.address = document.getElementById('cust-address').value;
+            
+            // Basic validation
+            if (!userData.customer.name) {
+                alert('กรุณากรอกนามลูกค้า');
+                return;
+            }
+            showStep(1);
+        }
 
         function selectOption(element, nextAction) {
             const parent = element.closest('.group-selection');
@@ -242,11 +325,60 @@
             if (stepNum === 'result') {
                 document.getElementById('step-result').classList.remove('hidden');
                 updateProgress(4);
+                
+                // Set Customer Info to Result View
+                document.getElementById('disp-name').innerText = userData.customer.name || '-';
+                document.getElementById('disp-phone').innerText = userData.customer.phone || '-';
+                document.getElementById('disp-email').innerText = userData.customer.email || '-';
+                document.getElementById('disp-address').innerText = userData.customer.address || '-';
+
                 const now = new Date();
-                document.getElementById('current-date').innerText = "วันที่ประเมิน: " + now.toLocaleDateString('th-TH') + " " + now.toLocaleTimeString('th-TH');
+                document.getElementById('current-date').innerText = "วันที่ประเมิน: " + now.toLocaleDateString('th-TH');
             } else {
                 document.getElementById('step-' + stepNum).classList.remove('hidden');
                 updateProgress(stepNum);
+            }
+        }
+
+        async function generatePDF() {
+            const btn = document.getElementById('download-btn');
+            const btnText = document.getElementById('btn-text');
+            const area = document.getElementById('pdf-area');
+            
+            btn.disabled = true;
+            btnText.innerText = "กำลังสร้างไฟล์ PDF...";
+            btn.classList.add('opacity-50', 'cursor-not-allowed');
+
+            try {
+                const canvas = await html2canvas(area, {
+                    scale: 2,
+                    useCORS: true,
+                    backgroundColor: "#ffffff"
+                });
+
+                const imgData = canvas.toDataURL('image/png');
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                
+                const pdfWidth = pdf.internal.pageSize.getWidth();
+                const imgProps = pdf.getImageProperties(imgData);
+                const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+                
+                pdf.addImage(imgData, 'PNG', 0, 10, pdfWidth, pdfHeight);
+                pdf.save(`solar-assessment-${userData.customer.name || 'customer'}.pdf`);
+                
+                btnText.innerText = "ดาวน์โหลดสำเร็จ!";
+                setTimeout(() => {
+                    btnText.innerText = "ดาวน์โหลดไฟล์ PDF";
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                }, 2000);
+
+            } catch (error) {
+                console.error(error);
+                btnText.innerText = "เกิดข้อผิดพลาด ลองอีกครั้ง";
+                btn.disabled = false;
+                btn.classList.remove('opacity-50', 'cursor-not-allowed');
             }
         }
 
@@ -275,41 +407,42 @@
             
             if (isMicro) {
                 visualIcon.innerHTML = `
-                    <svg width="120" height="80" viewBox="0 0 120 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <svg width="120" height="80" viewBox="0 0 120 80" xmlns="http://www.w3.org/2000/svg">
                         <rect x="10" y="10" width="30" height="40" rx="2" fill="#1E293B" />
                         <rect x="45" y="10" width="30" height="40" rx="2" fill="#1E293B" />
                         <rect x="80" y="10" width="30" height="40" rx="2" fill="#1E293B" />
-                        <rect x="15" y="55" width="20" height="10" rx="1" fill="#3B82F6" />
-                        <rect x="50" y="55" width="20" height="10" rx="1" fill="#3B82F6" />
-                        <rect x="85" y="55" width="20" height="10" rx="1" fill="#3B82F6" />
+                        <rect x="15" y="55" width="20" height="12" rx="2" fill="#2563EB" />
+                        <rect x="50" y="55" width="20" height="12" rx="2" fill="#2563EB" />
+                        <rect x="85" y="55" width="20" height="12" rx="2" fill="#2563EB" />
                         <path d="M25 50V55M60 50V55M95 50V55" stroke="#94A3B8" stroke-width="2"/>
                     </svg>
                 `;
-                resType.innerHTML = `<h3 class="text-2xl font-bold text-blue-800">ระบบ Microinverter</h3><p class="text-blue-600 mt-1 text-sm md:text-base font-medium">เทคโนโลยีแยกอิสระรายแผง (สูงสุดด้านความปลอดภัย)</p>`;
-                document.getElementById('res-price').innerText = "เพิ่มขึ้น ~20% จากราคากลาง";
+                resType.innerHTML = `<h3 class="text-2xl font-bold text-blue-800">ระบบ Microinverter</h3><p class="text-blue-600 font-medium">ความปลอดภัยสูงสุด แยกอิสระรายแผง</p>`;
+                document.getElementById('res-price').innerText = "เพิ่มขึ้น ~20% จากราคามาตรฐาน";
                 resBenefits.innerHTML = `
-                    <li>✅ ผลิตไฟแยกอิสระรายแผง เงาบังแผงหนึ่งแผงอื่นไม่ตก</li>
-                    <li>✅ ระบบ Rapid Shutdown ตัดไฟทันทีที่หลังคาเมื่อเกิดเหตุ</li>
-                    <li>✅ ดูการผลิตรายแผงผ่าน Mobile App ได้ละเอียด</li>
-                    <li>✅ รับประกันยาวนานสูงสุด 25 ปี</li>
+                    <li>✅ ผลิตไฟแยกอิสระรายแผง แม้มีเงาบัง แผงอื่นยังทำงานเต็มที่</li>
+                    <li>✅ ระบบ Rapid Shutdown ตัดไฟทันทีที่หลังคาเพื่อความปลอดภัย</li>
+                    <li>✅ ติดตามการผลิตไฟฟ้าได้ละเอียดระดับรายแผงผ่านมือถือ</li>
+                    <li>✅ รับประกันตัวเครื่องยาวนาน 12-25 ปี</li>
                 `;
             } else {
                 visualIcon.innerHTML = `
-                    <svg width="120" height="80" viewBox="0 0 120 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <rect x="10" y="10" width="30" height="40" rx="2" fill="#1E293B" />
-                        <rect x="45" y="10" width="30" height="40" rx="2" fill="#1E293B" />
-                        <rect x="80" y="10" width="30" height="40" rx="2" fill="#1E293B" />
-                        <rect x="45" y="60" width="30" height="15" rx="2" fill="#64748B" />
+                    <svg width="120" height="80" viewBox="0 0 120 80" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="10" y="10" width="30" height="40" rx="2" fill="#475569" />
+                        <rect x="45" y="10" width="30" height="40" rx="2" fill="#475569" />
+                        <rect x="80" y="10" width="30" height="40" rx="2" fill="#475569" />
+                        <rect x="45" y="60" width="30" height="15" rx="2" fill="#1E293B" />
+                        <circle cx="50" cy="67" r="2" fill="#22C55E" />
                         <path d="M25 50C25 67 45 67 45 67M60 50V60M95 50C95 67 75 67 75 67" stroke="#94A3B8" stroke-width="2" stroke-dasharray="2 2"/>
                     </svg>
                 `;
-                resType.innerHTML = `<h3 class="text-2xl font-bold text-slate-800">ระบบ String Inverter</h3><p class="text-slate-600 mt-1 text-sm md:text-base font-medium">เน้นความคุ้มค่า คืนทุนเร็ว (มาตรฐานสากล)</p>`;
+                resType.innerHTML = `<h3 class="text-2xl font-bold text-slate-800">ระบบ String Inverter</h3><p class="text-slate-600 font-medium">เน้นความคุ้มค่า คืนทุนไวที่สุด</p>`;
                 document.getElementById('res-price').innerText = price;
                 resBenefits.innerHTML = `
-                    <li>✅ ราคาย่อมเยา คืนทุนได้รวดเร็ว (4-6 ปี)</li>
-                    <li>✅ ระบบไม่ซับซ้อน ดูแลรักษาง่าย</li>
-                    <li>✅ เหมาะกับหลังคาผืนใหญ่ที่รับแดดได้เต็มที่</li>
-                    <li>✅ มาตรฐานสากล เป็นที่นิยมที่สุดในปัจจุบัน</li>
+                    <li>✅ ราคาย่อมเยาที่สุด คืนทุนได้รวดเร็ว (4-6 ปี)</li>
+                    <li>✅ โครงสร้างระบบไม่ซับซ้อน ดูแลรักษาง่าย</li>
+                    <li>✅ เหมาะสำหรับหลังคาพื้นที่กว้างที่แดดสม่ำเสมอ</li>
+                    <li>✅ เทคโนโลยีมาตรฐานสากลที่เป็นที่นิยม</li>
                 `;
             }
         }
